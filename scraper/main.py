@@ -1,6 +1,7 @@
 import re
 import sys
 import time
+sys.stdout.reconfigure(encoding='utf-8')
 sys.path.insert(0, ".")
 
 from scraper.article_scraper import get_article_links, fetch_all_articles
@@ -76,6 +77,7 @@ def run():
     articles = fetch_all_articles(articles_meta)
 
     # 3. Salva cada artigo
+    saved_files = []
     for article in articles:
         print(f"[PROCESSANDO] {article['title']}")
 
@@ -87,7 +89,8 @@ def run():
         else:
             article["pdf_path"] = None
 
-        save_article(article)
+        filepath = save_article(article)
+        saved_files.append(filepath)
         collected.append({
             "title": article["title"],
             "url": article["url"],
@@ -101,6 +104,7 @@ def run():
     save_index(collected)
     clear_checkpoint()
     print(f"\n=== Concluído — {len(collected)} artigos salvos ===")
+    print(f"\nArquivo gerado: {saved_files[0] if saved_files else ''}")
 
 
 if __name__ == "__main__":

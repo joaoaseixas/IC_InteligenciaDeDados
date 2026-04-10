@@ -1,29 +1,55 @@
 import json
 import re
 from pathlib import Path
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font, PatternFill, Alignment
 from config import ARTICLES_DIR, CHECKPOINT_FILE
 
-
-def _slugify(text: str) -> str:
-    text = text.lower().strip()
-    text = re.sub(r"[^\w\s-]", "", text)
-    return re.sub(r"[\s_-]+", "_", text)[:80]
+XLSX_PATH = Path(ARTICLES_DIR) / "artigos.xlsx"
+COLUMNS = ["Título", "Autor", "Data", "Link", "DOI", "PDF"]
 
 
-def save_article(article: dict) -> None:
+def _setup_sheet(ws):
+    ws.append(COLUMNS)
+    header_fill = PatternFill("solid", fgColor="2F5496")
+    header_font = Font(bold=True, color="FFFFFF")
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+    ws.column_dimensions["A"].width = 60
+    ws.column_dimensions["B"].width = 30
+    ws.column_dimensions["C"].width = 14
+    ws.column_dimensions["D"].width = 50
+    ws.column_dimensions["E"].width = 40
+    ws.column_dimensions["F"].width = 40
+
+
+def save_article(article: dict) -> Path:
     Path(ARTICLES_DIR).mkdir(parents=True, exist_ok=True)
-    slug = _slugify(article.get("title", "artigo"))
-    filepath = Path(ARTICLES_DIR) / f"{slug}.json"
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(article, f, ensure_ascii=False, indent=2)
-    print(f"[SALVO] {filepath}")
+    if XLSX_PATH.exists():
+        wb = load_workbook(XLSX_PATH)
+        ws = wb.active
+    else:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Artigos"
+        _setup_sheet(ws)
+
+    ws.append([
+        article.get("title", ""),
+        article.get("author", ""),
+        article.get("date", ""),
+        article.get("url", ""),
+        article.get("doi", "") or "",
+        article.get("pdf_link", "") or "",
+    ])
+    wb.save(XLSX_PATH)
+    return XLSX_PATH
 
 
 def save_index(articles: list[dict]) -> None:
-    filepath = Path(ARTICLES_DIR) / "_index.json"
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(articles, f, ensure_ascii=False, indent=2)
-    print(f"[ÍNDICE] {len(articles)} artigos salvos em {filepath}")
+    print(f"[ÍNDICE] {len(articles)} artigos salvos em {XLSX_PATH}")
 
 
 # --- Checkpoint ---
