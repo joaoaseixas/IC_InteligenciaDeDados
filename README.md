@@ -82,7 +82,6 @@ pip install -r requirements.txt
 
 # 4. Executar
 python main.py          # scrapa 3 páginas (padrão)
-python main.py 10       # scrapa 10 páginas
 ```
 
 Os resultados ficam em:
