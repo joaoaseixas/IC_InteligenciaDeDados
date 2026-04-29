@@ -19,7 +19,8 @@ O sistema percorre as páginas de listagem do The Conversation BR, filtra artigo
 
 ```
 scraper/
-├── main.py                  # Ponto de entrada da aplicação
+├── main.py                  # Ponto de entrada — coleta artigos do site
+├── extract_texts.py         # Extrai textos de arquivos já coletados → CSV
 ├── config.py                # Configurações globais (URLs, keywords, delays)
 ├── requirements.txt         # Dependências Python
 │
@@ -28,11 +29,11 @@ scraper/
 │   └── pdf_downloader.py    # Download e validação de PDFs
 │
 ├── storage/
-│   └── file_manager.py      # Persistência em JSON
+│   └── file_manager.py      # Persistência em XLSX
 │
 └── data/
     ├── pdfs/                # PDFs baixados
-    └── articles/            # JSONs com metadados e texto de cada artigo
+    └── articles/            # artigos.xlsx + textos_extraidos.csv
 ```
 
 ---
@@ -79,25 +80,102 @@ source .venv/bin/activate     # Linux/macOS
 
 # 3. Instalar dependências
 pip install -r requirements.txt
-
-# 4. Executar
-python main.py          # scrapa 3 páginas (padrão)
 ```
-
-Os resultados ficam em:
-- `data/articles/` — um `.json` por artigo + `_index.json` com o índice geral
-- `data/pdfs/` — PDFs baixados (quando disponíveis na página do artigo)
 
 ---
 
-## Ajustando para outro tema
+### Parte 1 — Coletar artigos do site
 
-Edite a lista `KEYWORDS` em `config.py` para refletir os termos do seu tema de pesquisa:
-
-```python
-KEYWORDS = [
-    "saúde mental", "ansiedade", "depressão", "bem-estar"
-]
+```bash
+python main.py
 ```
+
+Ao executar, o sistema pergunta o modo de busca:
+
+```
+=== Web Scraper - The Conversation BR ===
+
+Como deseja executar a busca?
+  [1] Escanear o site todo
+  [2] Definir número de páginas
+```
+
+- Escolha **1** para varrer o site inteiro (pode demorar bastante)
+- Escolha **2** e informe quantas páginas deseja buscar
+
+Se uma execução anterior foi interrompida, o sistema detecta o checkpoint e pergunta se deseja continuar de onde parou.
+
+Resultados salvos em:
+- `data/articles/artigos.xlsx` — planilha com título, autor, data, link, DOI e PDF de cada artigo
+- `data/pdfs/` — PDFs baixados (quando disponíveis)
+
+---
+
+### Parte 2 — Extrair textos para CSV
+
+Esse script acessa cada artigo coletado, extrai o texto completo e salva em CSV.
+
+**Opção A — usar o `artigos.xlsx` gerado automaticamente:**
+
+```bash
+python extract_texts.py
+```
+
+Escolha a opção `[1]` no menu.
+
+**Opção B — usar arquivos enviados pelo grupo (xlsx ou csv):**
+
+```bash
+python extract_texts.py
+```
+
+Escolha a opção `[2]` e informe o caminho de cada arquivo. Pressione Enter em branco para finalizar e iniciar a extração:
+
+```
+=== Extrator de Textos ===
+
+Opções:
+  [1] Usar artigos.xlsx padrão
+  [2] Adicionar arquivos manualmente
+
+Escolha (1 ou 2): 2
+
+Digite o caminho completo de cada arquivo (Enter em branco para finalizar):
+  Arquivo 1: C:\Users\voce\Downloads\lista_grupo.xlsx
+  [OK] Adicionado: lista_grupo.xlsx
+  Arquivo 2: C:\Users\voce\Downloads\outro.csv
+  [OK] Adicionado: outro.csv
+  Arquivo 3:   ← Enter vazio para iniciar
+
+[INFO] 2 arquivo(s) carregado(s).
+  lista_grupo.xlsx: 45 artigos únicos adicionados
+  outro.csv: 12 artigos únicos adicionados
+```
+
+**Opção C — passar o arquivo direto como argumento:**
+
+```bash
+python extract_texts.py caminho/para/arquivo.xlsx
+python extract_texts.py caminho/para/arquivo.csv
+```
+
+> Os arquivos de entrada precisam ter uma coluna com a URL dos artigos (aceita cabeçalhos: `link`, `url`, `Link`, `URL`, `Link do artigo`).
+
+Resultado salvo em:
+- `data/articles/textos_extraidos.csv` — colunas: `titulo, autor, data, url, doi, texto`
+
+---
+
+## Ajustando as palavras-chave
+
+Edite o `config.py` para refletir os termos do seu tema de pesquisa. Há três listas:
+
+- `KEYWORDS_POPULATION` — termos relacionados ao público-alvo (ex: idoso, envelhecimento)
+- `KEYWORDS_TOPIC` — termos de tema (ex: saúde mental, demência, qualidade de vida)
+- `KEYWORDS_STANDALONE` — termos que sozinhos já indicam artigo relevante (ex: alzheimer, geriatria)
+
+Um artigo é considerado relevante se:
+- Contém qualquer termo de `KEYWORDS_STANDALONE`, **ou**
+- Contém ao menos um termo de `KEYWORDS_POPULATION` **e** um de `KEYWORDS_TOPIC`
 
 Para usar outra fonte, altere `BASE_URL` e, se necessário, os seletores CSS em `article_scraper.py` para corresponder à estrutura HTML do novo portal.

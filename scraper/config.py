@@ -25,22 +25,35 @@ KEYWORDS_POPULATION = [
 
 # Termos de tema (saúde, bem-estar, doenças relacionadas à idade)
 KEYWORDS_TOPIC = [
+    # Saúde geral
     "saude", "bem-estar", "bem estar",
     "qualidade de vida", "cuidado", "cuidados",
-    "doenca", "doencas", "tratamento",
+    "doenca", "doencas", "tratamento", "prevencao",
+    # Saúde mental (agrupa depressão, ansiedade, etc.)
+    "saude mental", "transtorno mental", "transtornos mentais",
+    "sofrimento psiquico", "psicologico", "psiquiatrico",
     "mental", "cognitivo", "cognicao", "memoria",
+    "solidao", "isolamento social",
+    # Doenças neurodegenerativas
     "demencia", "alzheimer", "parkinson",
-    "depressao", "ansiedade", "solidao",
+    "neurologico", "neurologia", "cerebro",
+    # Funcionalidade e mobilidade
     "atividade fisica", "exercicio", "mobilidade",
-    "nutricao", "alimentacao", "sono",
     "autonomia", "independencia", "fragilidade",
+    "queda", "quedas", "fratura", "equilibrio", "marcha",
+    # Nutrição e sono
+    "nutricao", "alimentacao", "sono",
+    # Reabilitação e cuidados
     "reabilitacao", "fisioterapia", "medicamento",
     "hospital", "clinica", "medico", "enfermagem",
+    "cuidador", "cuidado informal",
+    # Mortalidade e doenças crônicas
     "morte", "mortalidade", "morbidade",
     "pressao arterial", "diabetes", "osteoporose",
-    "queda", "quedas", "fratura", "osso",
-    "cerebro", "neurologico", "neurologia",
-    "andar", "marcha", "equilibrio"
+    "doenca cronica", "multimorbidade",
+    # Aspectos sociais
+    "inclusao social", "politica publica", "direitos",
+    "vulnerabilidade", "desigualdade"
 ]
 
 # Termos que sozinhos já indicam artigo relevante (sem precisar de AND)
@@ -49,7 +62,9 @@ KEYWORDS_STANDALONE = [
     "envelhecimento", "envelhecemos", "envelhecer",
     "geriatria", "gerontologia",
     "longevidade", "velhice",
-    "terceira idade"
+    "terceira idade",
+    "saude do idoso", "saude mental do idoso",
+    "cuidado ao idoso", "cuidado de idosos"
 ]
 
 DATA_DIR = "data"
