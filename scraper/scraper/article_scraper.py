@@ -23,12 +23,15 @@ def _normalize(text: str) -> str:
     return unicodedata.normalize("NFD", text).encode("ascii", "ignore").decode().lower()
 
 
+# Usa o regex para filtrar artigos relevantes após a busca pelas keywords
 def _is_relevant(text: str) -> bool:
     t = _normalize(text)
-    if any(_normalize(kw) in t for kw in KEYWORDS_STANDALONE):
+
+    if any(p.search(t) for p in PATTERNS_STANDALONE):
         return True
-    has_population = any(_normalize(kw) in t for kw in KEYWORDS_POPULATION)
-    has_topic = any(_normalize(kw) in t for kw in KEYWORDS_TOPIC)
+
+    has_population = any(p.search(t) for p in PATTERNS_POPULATION)
+    has_topic = any(p.search(t) for p in PATTERNS_TOPIC)
     return has_population and has_topic
 
 
