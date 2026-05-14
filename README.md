@@ -1,17 +1,22 @@
 # IC — Inteligência de Dados
 
-Sistema de web-scraping para busca e extração de artigos científicos e jornalísticos, com suporte a download de PDFs. Desenvolvido como parte de uma Iniciação Científica, tendo o portal [The Conversation BR](https://theconversation.com/br) como fonte de validação.
+Sistema de web-scraping para busca e extração de artigos científicos e jornalísticos, com suporte a download de PDFs. Desenvolvido como parte de uma Iniciação Científica.
+
+Fontes suportadas:
+- [The Conversation BR](https://theconversation.com/br) — scraping direto via `requests`
+- [ResearchGate](https://www.researchgate.net) — scraping via Selenium (Chrome headless)
+- [IEEE Xplore](https://ieeexplore.ieee.org) — scraping via Selenium (Chrome headless)
 
 ---
 
 ## Como funciona
 
-O sistema percorre as páginas de listagem do The Conversation BR, filtra artigos cujos títulos contenham palavras-chave relacionadas ao tema da pesquisa e, para cada artigo relevante encontrado:
+O sistema busca artigos na fonte selecionada usando as palavras-chave configuradas e, para cada artigo relevante encontrado:
 
 1. Acessa a página do artigo
 2. Tenta localizar e baixar um PDF diretamente vinculado
 3. Extrai o texto do corpo do artigo como fallback caso não haja PDF
-4. Persiste os dados em arquivos JSON individuais e em um índice geral
+4. Persiste os dados em `artigos.xlsx`
 
 ---
 
@@ -19,21 +24,22 @@ O sistema percorre as páginas de listagem do The Conversation BR, filtra artigo
 
 ```
 scraper/
-├── main.py                  # Ponto de entrada — coleta artigos do site
-├── extract_texts.py         # Extrai textos de arquivos já coletados → CSV
-├── config.py                # Configurações globais (URLs, keywords, delays)
-├── requirements.txt         # Dependências Python
+├── main.py                       # Ponto de entrada — coleta artigos do site
+├── extract_texts.py              # Extrai textos de arquivos já coletados → CSV
+├── config.py                     # Configurações globais (URLs, keywords, delays, fontes)
+├── requirements.txt              # Dependências Python
 │
 ├── scraper/
-│   ├── article_scraper.py   # Coleta de links e extração de conteúdo
-│   └── pdf_downloader.py    # Download e validação de PDFs
+│   ├── article_scraper.py        # Coleta de links (The Conversation) e extração de conteúdo
+│   ├── selenium_scraper.py       # Coleta de links via Selenium (ResearchGate e IEEE)
+│   └── pdf_downloader.py         # Download e validação de PDFs
 │
 ├── storage/
-│   └── file_manager.py      # Persistência em XLSX
+│   └── file_manager.py           # Persistência em XLSX
 │
 └── data/
-    ├── pdfs/                # PDFs baixados
-    └── articles/            # artigos.xlsx + textos_extraidos.csv
+    ├── pdfs/                     # PDFs baixados
+    └── articles/                 # artigos.xlsx + textos_extraidos.csv
 ```
 
 ---
@@ -41,33 +47,39 @@ scraper/
 ## Papel de cada arquivo
 
 ### `main.py`
-Orquestra todo o fluxo: coleta os links, processa cada artigo, aciona o download de PDF quando disponível e salva os resultados. É o único arquivo que deve ser executado diretamente.
+Orquestra todo o fluxo: pergunta a fonte e o modo de busca, coleta os links, processa cada artigo, aciona o download de PDF quando disponível e salva os resultados. É o único arquivo que deve ser executado diretamente.
 
 ### `config.py`
 Centraliza todas as configurações do sistema:
-- `BASE_URL` — URL base do portal alvo
-- `KEYWORDS` — lista de termos usados para filtrar artigos relevantes
+- `SOURCES` — dicionário com as fontes disponíveis e seus IDs
+- `BASE_URL` — URL base do The Conversation BR
+- `KEYWORDS_*` / `PATTERNS_*` — listas de termos para filtrar artigos relevantes
 - `REQUEST_DELAY` — intervalo em segundos entre requisições (evita bloqueio)
 - Caminhos dos diretórios de saída (`PDF_DIR`, `ARTICLES_DIR`)
 
 ### `scraper/article_scraper.py`
-Contém duas funções principais:
-- `get_article_links(max_pages)` — varre as páginas de listagem e retorna título e URL dos artigos cujo título bate com alguma keyword
-- `get_article_content(url)` — acessa a página de um artigo e extrai título, texto do corpo e link de PDF (se houver)
+Responsável pela busca no The Conversation BR e pela extração de conteúdo de qualquer fonte:
+- `get_article_links(max_pages, source_id)` — despacha para o scraper correto conforme a fonte escolhida
+- `get_article_content(url)` — acessa a página de um artigo e extrai título, autor, data, DOI, PDF e texto
+
+### `scraper/selenium_scraper.py`
+Scrapers baseados em Selenium (Chrome headless) para sites que bloqueiam `requests` ou usam JavaScript:
+- `search_researchgate(...)` — busca publicações no ResearchGate
+- `search_ieee(...)` — busca artigos no IEEE Xplore
 
 ### `scraper/pdf_downloader.py`
-Responsável por baixar PDFs. Valida o `Content-Type` da resposta antes de salvar para garantir que o arquivo recebido é de fato um PDF. Salva os arquivos em `data/pdfs/`.
+Responsável por baixar PDFs. Valida o `Content-Type` da resposta antes de salvar. Salva os arquivos em `data/pdfs/`.
 
 ### `storage/file_manager.py`
-Gerencia a persistência dos dados:
-- `save_article(article)` — salva os dados de um artigo (título, URL, texto, caminho do PDF) em um arquivo `.json` nomeado pelo slug do título
-- `save_index(articles)` — salva um arquivo `_index.json` com o resumo de todos os artigos coletados na execução
+Gerencia a persistência dos dados em `artigos.xlsx` e o sistema de checkpoint para retomada de execuções interrompidas.
 
 ---
 
 ## Instalação e execução
 
-**Pré-requisito:** Python 3.10+
+**Pré-requisitos:**
+- Python 3.10+
+- Google Chrome instalado na máquina (necessário para ResearchGate e IEEE)
 
 ```bash
 # 1. Entrar na pasta do scraper
@@ -82,6 +94,8 @@ source .venv/bin/activate     # Linux/macOS
 pip install -r requirements.txt
 ```
 
+> Na primeira execução com ResearchGate ou IEEE, o `webdriver-manager` baixa automaticamente o ChromeDriver compatível com a versão do Chrome instalada.
+
 ---
 
 ### Parte 1 — Coletar artigos do site
@@ -90,10 +104,21 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Ao executar, o sistema pergunta o modo de busca:
+Ao executar, o sistema primeiro pergunta a fonte:
 
 ```
-=== Web Scraper - The Conversation BR ===
+=== Selecione a fonte de busca ===
+  [1] The Conversation BR
+  [2] ResearchGate
+  [3] IEEE Xplore
+
+Escolha:
+```
+
+Depois pergunta o modo de busca:
+
+```
+=== Web Scraper ===
 
 Como deseja executar a busca?
   [1] Escanear o site todo
@@ -178,4 +203,10 @@ Um artigo é considerado relevante se:
 - Contém qualquer termo de `KEYWORDS_STANDALONE`, **ou**
 - Contém ao menos um termo de `KEYWORDS_POPULATION` **e** um de `KEYWORDS_TOPIC`
 
-Para usar outra fonte, altere `BASE_URL` e, se necessário, os seletores CSS em `article_scraper.py` para corresponder à estrutura HTML do novo portal.
+---
+
+## Adicionando novas fontes
+
+1. Adicione a fonte em `SOURCES` no `config.py`
+2. Implemente a função de busca em `selenium_scraper.py` (se o site usa JS) ou em `article_scraper.py` (se é HTML estático)
+3. Adicione o despacho pelo novo `source_id` em `get_article_links` no `article_scraper.py`

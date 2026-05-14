@@ -3,8 +3,9 @@ import unicodedata
 import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from config import HEADERS, KEYWORDS_POPULATION, KEYWORDS_TOPIC, KEYWORDS_STANDALONE, REQUEST_DELAY, MAX_WORKERS
+from config import HEADERS, KEYWORDS_POPULATION, KEYWORDS_TOPIC, KEYWORDS_STANDALONE, REQUEST_DELAY, MAX_WORKERS, SOURCES
 from storage.file_manager import save_checkpoint
+from scraper.selenium_scraper import search_researchgate, search_ieee
 
 _JUNK_PDF_PATTERNS = ["Diretrizes", "editorial", "guidelines", "static_files"]
 
@@ -74,14 +75,22 @@ def _search_keyword(query: str, max_pages: int | None, seen_urls: set) -> list[d
     return articles
 
 
-def get_article_links(max_pages: int | None = None, start_page: int = 1, seen_urls: set = None) -> list[dict]:
+def get_article_links(max_pages: int | None = None, start_page: int = 1, seen_urls: set = None, source_id: str = "theconversation") -> list[dict]:
     seen_urls = seen_urls or set()
     articles = []
     queries = list(KEYWORDS_STANDALONE) + [f"{p} {t}" for p in KEYWORDS_POPULATION[:5] for t in KEYWORDS_TOPIC[:5]]
-    for query in queries:
-        print(f"[BUSCANDO] '{query}'...")
-        found = _search_keyword(query, max_pages, seen_urls)
-        articles.extend(found)
+
+    if source_id == "researchgate":
+        articles = search_researchgate(queries, max_pages, seen_urls,
+                                       PATTERNS_STANDALONE, PATTERNS_POPULATION, PATTERNS_TOPIC)
+    elif source_id == "ieee":
+        articles = search_ieee(queries, max_pages, seen_urls,
+                               PATTERNS_STANDALONE, PATTERNS_POPULATION, PATTERNS_TOPIC)
+    else:
+        for query in queries:
+            print(f"[BUSCANDO] '{query}'...")
+            found = _search_keyword(query, max_pages, seen_urls)
+            articles.extend(found)
     return articles
 
 

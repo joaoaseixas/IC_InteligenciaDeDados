@@ -7,7 +7,21 @@ sys.path.insert(0, ".")
 from scraper.article_scraper import get_article_links, fetch_all_articles
 from scraper.pdf_downloader import download_pdf
 from storage.file_manager import save_article, save_index, load_checkpoint, save_checkpoint, clear_checkpoint
-from config import REQUEST_DELAY
+from config import REQUEST_DELAY, SOURCES
+
+
+def ask_source() -> str:
+    """Pergunta qual fonte usar. Retorna o source_id."""
+    print("\n=== Selecione a fonte de busca ===")
+    for key, src in SOURCES.items():
+        print(f"  [{key}] {src['name']}")
+    while True:
+        escolha = input("\nEscolha: ").strip()
+        if escolha in SOURCES:
+            src = SOURCES[escolha]
+            print(f"\n[INFO] Fonte: {src['name']}\n")
+            return src["id"]
+        print(f"[ERRO] Digite uma opção válida ({', '.join(SOURCES.keys())}).")
 
 
 def slugify(text: str) -> str:
@@ -18,7 +32,7 @@ def slugify(text: str) -> str:
 
 def ask_pages() -> int | None:
     """Pergunta o modo de busca. Retorna max_pages ou None (site todo)."""
-    print("\n=== Web Scraper - The Conversation BR ===")
+    print("\n=== Web Scraper ===")
     print("\nComo deseja executar a busca?")
     print("  [1] Escanear o site todo")
     print("  [2] Definir número de páginas")
@@ -45,6 +59,7 @@ def run():
     seen_urls = set()
     collected = []
     max_pages = None
+    source_id = "theconversation"
 
     if checkpoint:
         last_page = checkpoint["last_page"]
@@ -54,17 +69,20 @@ def run():
             start_page = last_page + 1
             seen_urls = set(checkpoint["seen_urls"])
             collected = checkpoint["collected"]
+            source_id = ask_source()
             max_pages = ask_pages()
             print(f"\n[INFO] Retomando da página {start_page} com {len(collected)} artigos já coletados.\n")
         else:
             clear_checkpoint()
             print("[INFO] Checkpoint descartado.\n")
+            source_id = ask_source()
             max_pages = ask_pages()
     else:
+        source_id = ask_source()
         max_pages = ask_pages()
 
     # 1. Coleta links por página (com checkpoint automático)
-    articles_meta = get_article_links(max_pages=max_pages, start_page=start_page, seen_urls=seen_urls)
+    articles_meta = get_article_links(max_pages=max_pages, start_page=start_page, seen_urls=seen_urls, source_id=source_id)
     print(f"\n[INFO] {len(articles_meta)} novos artigos relevantes encontrados.\n")
 
     if not articles_meta:

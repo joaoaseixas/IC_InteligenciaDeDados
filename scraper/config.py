@@ -2,6 +2,13 @@ import re
 
 BASE_URL = "https://theconversation.com/br"
 
+# Fontes disponíveis para busca
+SOURCES = {
+    "1": {"name": "The Conversation BR", "id": "theconversation"},
+    "2": {"name": "ResearchGate",         "id": "researchgate"},
+    "3": {"name": "IEEE Xplore",           "id": "ieee"},
+}
+
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
